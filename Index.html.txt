@@ -1,0 +1,1940 @@
+
+```html
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>VeriTrue — Mobile Authenticity Scanner</title>
+  <meta name="description" content="VeriTrue mobile app: scan packaging photos, validate GS1 barcodes, detect fake deals, and run tactile authenticity checklists." />
+  <meta name="theme-color" content="#0F172A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="VeriTrue" />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          },
+          colors: {
+            navy: '#0F172A',
+            surface: '#F8FAFC',
+            authentic: '#10B981',
+            caution: '#F59E0B',
+            danger: '#EF4444',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html, body {
+      height: 100%;
+      overscroll-behavior-y: none;
+    }
+    .app-shell {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+    @media (min-width: 640px) {
+      .app-shell {
+        height: min(92dvh, 860px);
+        max-height: 860px;
+      }
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes scanLine {
+      0% { top: 10%; opacity: 0.25; }
+      50% { top: 86%; opacity: 1; }
+      100% { top: 10%; opacity: 0.25; }
+    }
+    .animate-scan-line {
+      animation: scanLine 2.4s ease-in-out infinite;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-900 sm:bg-gradient-to-br sm:from-slate-900 sm:via-slate-800 sm:to-slate-900 font-sans antialiased text-[#0F172A] flex items-center justify-center sm:p-4 overflow-hidden">
+
+  <!-- ===================================================================== -->
+  <!-- MOBILE APP SHELL (Full-bleed on phones, sleek 440px device on desktop)-->
+  <!-- ===================================================================== -->
+  <div class="app-shell relative w-full sm:max-w-[440px] bg-[#F8FAFC] sm:rounded-[2.25rem] sm:shadow-2xl sm:shadow-black/60 sm:border-[6px] sm:border-slate-800 flex flex-col overflow-hidden">
+
+    <!-- Toast Notification Overlay inside App Shell -->
+    <div id="toastStack" role="status" aria-live="polite" class="absolute top-16 inset-x-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- =================================================================== -->
+    <!-- STICKY TOP APP BAR                                                  -->
+    <!-- =================================================================== -->
+    <header class="shrink-0 bg-[#0F172A] text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 z-30">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shadow-inner">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2.5L4.5 5.6V11.3C4.5 16.2 7.7 20.6 12 22C16.3 20.6 19.5 16.2 19.5 11.3V5.6L12 2.5Z" fill="#10B981" fill-opacity="0.22" stroke="#10B981" stroke-width="1.9" stroke-linejoin="round" />
+            <path d="M8.7 12.1L10.9 14.3L15.6 9.6" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight leading-none">
+            Veri<span class="text-[#10B981]">True</span>
+          </h1>
+          <p id="topBarSubtitle" class="text-[11px] text-slate-400 font-medium mt-0.5">AI Authenticity Scanner</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="installPromptBtn" type="button" class="hidden px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-[#0F172A] text-xs font-extrabold transition-colors">
+          Install
+        </button>
+        <button id="openInfoBtn" type="button" aria-label="Install and App Info" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors">
+          <svg class="w-4 h-4 text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Install</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- SCROLLABLE MAIN SCREEN AREA                                         -->
+    <!-- =================================================================== -->
+    <main id="appViewport" class="flex-1 overflow-y-auto no-scrollbar pb-24">
+
+      <!-- ================================================================= -->
+      <!-- TAB 1: SCAN (LIVE CAMERA + PHOTO UPLOAD + AI INSPECTOR)           -->
+      <!-- ================================================================= -->
+      <section id="view-scan" class="app-view p-4 space-y-4">
+
+        <!-- Quick Header Card -->
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-[#0F172A]">Scan Product</h2>
+            <p class="text-xs text-slate-500">Snap logos, labels, stitching, or box seals.</p>
+          </div>
+          <button id="demoScanBtn" type="button" class="shrink-0 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-colors">
+            Try Demo Scan
+          </button>
+        </div>
+
+        <!-- Viewfinder / Image Preview Container -->
+        <div class="relative rounded-3xl overflow-hidden bg-[#0F172A] border border-slate-200 shadow-sm">
+          <!-- Mode 1: Idle Capture Prompt -->
+          <div id="scanIdleBox" class="p-6 text-center text-white">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-[#10B981]">
+              <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+            </div>
+            <p class="mt-3 text-sm font-bold">Capture or Upload Packaging</p>
+            <p class="mt-1 text-xs text-slate-400 max-w-xs mx-auto">Use your rear camera for instant capture or pick a close-up photo from your gallery.</p>
+
+            <div class="mt-5 grid grid-cols-2 gap-2.5">
+              <button id="startCameraBtn" type="button" class="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-[#10B981] hover:bg-emerald-400 text-[#0F172A] text-xs font-extrabold shadow transition-colors">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="3"></circle><path d="M5 7h2l2-3h6l2 3h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"></path></svg>
+                Live Camera
+              </button>
+              <button id="uploadGalleryBtn" type="button" class="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-xs font-bold transition-colors">
+                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>
+                Upload Photo
+              </button>
+            </div>
+            <input id="scanFileInput" type="file" accept="image/*" capture="environment" class="hidden" />
+          </div>
+
+          <!-- Mode 2: Active Rear Camera Stream -->
+          <div id="scanCameraBox" class="hidden relative aspect-[4/3] bg-black">
+            <video id="cameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <!-- Scanning Viewfinder Frame -->
+            <div class="pointer-events-none absolute inset-4 border-2 border-white/25 rounded-2xl overflow-hidden">
+              <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[#10B981] rounded-tl-lg"></div>
+              <div class="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[#10B981] rounded-tr-lg"></div>
+              <div class="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[#10B981] rounded-bl-lg"></div>
+              <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[#10B981] rounded-br-lg"></div>
+              <div class="animate-scan-line absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-[#10B981] to-transparent shadow-[0_0_12px_#10B981]"></div>
+            </div>
+
+            <!-- Camera Controls -->
+            <div class="absolute bottom-3 inset-x-3 flex items-center justify-between">
+              <button id="stopCameraBtn" type="button" class="px-3 py-2 rounded-xl bg-black/70 text-white text-xs font-semibold backdrop-blur-sm border border-white/15">
+                Cancel
+              </button>
+              <button id="snapPhotoBtn" type="button" aria-label="Capture photo" class="w-14 h-14 rounded-full bg-white border-4 border-[#10B981] shadow-xl active:scale-95 transition-transform flex items-center justify-center">
+                <span class="w-9 h-9 rounded-full bg-[#0F172A]"></span>
+              </button>
+              <div class="w-16"></div>
+            </div>
+          </div>
+
+          <!-- Mode 3: Captured / Uploaded Photo Preview -->
+          <div id="scanPreviewBox" class="hidden relative bg-slate-950">
+            <img id="scanPreviewImg" src="" alt="Product preview" class="w-full max-h-60 object-contain mx-auto" />
+            <div class="p-2.5 bg-slate-900/95 border-t border-slate-800 flex items-center justify-between gap-2">
+              <span id="scanFileLabel" class="text-[11px] font-medium text-slate-300 truncate">Ready to inspect</span>
+              <button id="clearScanPhotoBtn" type="button" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-950 text-rose-300 border border-slate-700 text-[11px] font-bold">
+                Retake
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Optional Compact Metadata Form -->
+        <form id="scanForm" class="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-xs" novalidate>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label for="scanBrand" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Brand</label>
+              <input id="scanBrand" type="text" placeholder="e.g., Nike, Apple" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label for="scanPrice" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Price / Store</label>
+              <input id="scanPrice" type="text" placeholder="e.g., ₹4,999 Insta" class="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+
+          <button id="runScanBtn" type="submit" class="w-full py-3.5 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-60">
+            <svg id="scanSpinner" class="hidden w-4 h-4 animate-spin text-[#10B981]" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <svg id="scanBtnIcon" class="w-4 h-4 text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+            <span id="runScanBtnText">Analyze Authenticity</span>
+          </button>
+        </form>
+
+        <!-- AI Scan Report Card -->
+        <div id="scanResultCard" class="hidden bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div class="flex items-center gap-4 pb-4 border-b border-slate-100">
+            <!-- Circular Score Gauge -->
+            <div class="relative w-20 h-20 shrink-0 flex items-center justify-center">
+              <svg class="w-20 h-20 -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" stroke-width="10"></circle>
+                <circle id="scanGaugeArc" cx="50" cy="50" r="42" fill="none" stroke="#10B981" stroke-width="10" stroke-linecap="round" stroke-dasharray="263.89" stroke-dashoffset="263.89" class="transition-all duration-1000"></circle>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="scanScoreNum" class="text-xl font-extrabold text-[#0F172A]">0</span>
+                <span class="text-[9px] font-bold text-slate-400">/100</span>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <span id="scanVerdictPill" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"></span>
+              <p id="scanSummaryTxt" class="mt-1.5 text-xs text-slate-600 leading-relaxed"></p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-emerald-800 mb-2">Authentic Signals</h4>
+              <ul id="scanAuthenticList" class="space-y-1.5 text-xs text-slate-700 list-disc list-inside"></ul>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200/80">
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-rose-800 mb-2">Red Flags &amp; Anomalies</h4>
+              <ul id="scanRedFlagList" class="space-y-1.5 text-xs text-slate-700 list-disc list-inside"></ul>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <h4 class="text-[11px] font-bold uppercase tracking-wider text-[#0F172A] mb-2">Next Verification Steps</h4>
+              <ol id="scanNextStepList" class="space-y-1.5 text-xs text-slate-700 list-decimal list-inside"></ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 2: BARCODE (GS1 EAN-13 / UPC-A / EAN-8 + LIVE SCANNER)        -->
+      <!-- ================================================================= -->
+      <section id="view-barcode" class="app-view hidden p-4 space-y-4">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#0F172A]">Barcode Validator</h2>
+          <p class="text-xs text-slate-500">Verify GS1 check-digit math &amp; country registration prefix.</p>
+        </div>
+
+        <!-- Live Barcode Scanner Card -->
+        <div class="bg-[#0F172A] text-white rounded-3xl p-4 shadow-sm">
+          <div id="liveBarcodeIdle" class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold text-white">Camera Barcode Scanner</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">Auto-reads EAN-13, UPC-A &amp; EAN-8 codes.</p>
+            </div>
+            <button id="startBarcodeCamBtn" type="button" class="shrink-0 px-3.5 py-2.5 rounded-xl bg-[#10B981] hover:bg-emerald-400 text-[#0F172A] text-xs font-extrabold transition-colors">
+              Scan Code
+            </button>
+          </div>
+
+          <div id="liveBarcodeActive" class="hidden space-y-2.5">
+            <div class="relative rounded-2xl overflow-hidden bg-black aspect-[16/10]">
+              <video id="barcodeVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+              <div class="pointer-events-none absolute inset-x-6 top-1/2 -translate-y-1/2 h-16 border-2 border-[#10B981] rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+                <div class="animate-scan-line absolute inset-x-1 h-0.5 bg-[#10B981]"></div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-emerald-300 font-medium">Align barcode inside green frame...</span>
+              <button id="stopBarcodeCamBtn" type="button" class="px-3 py-1 rounded-lg bg-slate-800 text-xs font-semibold text-white border border-slate-700">Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual Barcode Entry -->
+        <div class="bg-white rounded-3xl border border-slate-200 p-4 space-y-3.5 shadow-xs">
+          <form id="barcodeForm" class="space-y-3" novalidate>
+            <div>
+              <label for="barcodeInput" class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">Enter 8, 12, or 13 Digit Barcode</label>
+              <input id="barcodeInput" type="text" inputmode="numeric" maxlength="18" placeholder="e.g., 8901030865121" class="w-full px-3.5 py-3 rounded-xl bg-slate-50 border border-slate-200 font-mono text-base tracking-widest text-[#0F172A] focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+              <p id="barcodeErr" class="hidden mt-1 text-xs font-medium text-[#EF4444]"></p>
+            </div>
+            <button type="submit" class="w-full py-3 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-sm font-bold shadow transition-colors">
+              Validate GS1 Checksum
+            </button>
+          </form>
+
+          <!-- Quick Test Chips -->
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Quick Test Codes</p>
+            <div class="flex flex-wrap gap-1.5">
+              <button type="button" data-code="8901030865121" class="bc-chip px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-semibold">India 890 (Valid)</button>
+              <button type="button" data-code="036000291452" class="bc-chip px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">US UPC-A (Valid)</button>
+              <button type="button" data-code="4902430789127" class="bc-chip px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">Japan (Valid)</button>
+              <button type="button" data-code="8901030865129" class="bc-chip px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-semibold">Fake Checksum</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barcode Result Card -->
+        <div id="barcodeResultCard" class="hidden bg-white rounded-3xl border border-slate-200 p-4 space-y-3.5 shadow-sm">
+          <div id="bcBanner" class="p-3.5 rounded-2xl border flex items-start gap-3">
+            <div id="bcBannerIcon" class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"></div>
+            <div class="min-w-0">
+              <h3 id="bcStatusTitle" class="text-sm font-extrabold"></h3>
+              <p id="bcStatusSub" class="text-xs mt-0.5 leading-snug"></p>
+            </div>
+          </div>
+
+          <!-- Visual SVG Barcode -->
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+            <div id="bcVisualStrip" class="h-12 flex items-stretch justify-center gap-[2px]" aria-hidden="true"></div>
+            <p id="bcCodeFormatted" class="mt-2 font-mono text-sm font-bold tracking-[0.2em] text-[#0F172A]"></p>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <p class="text-[10px] font-bold uppercase text-slate-400">Format</p>
+              <p id="bcFormatTxt" class="mt-0.5 text-xs font-extrabold text-[#0F172A]"></p>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 col-span-2">
+              <p class="text-[10px] font-bold uppercase text-slate-400">GS1 Country / Region</p>
+              <p id="bcRegionTxt" class="mt-0.5 text-xs font-extrabold text-[#0F172A]"></p>
+            </div>
+          </div>
+
+          <p id="bcMathTxt" class="p-3 rounded-xl bg-slate-50 border border-slate-200 font-mono text-[11px] text-slate-700 leading-relaxed whitespace-pre-line"></p>
+        </div>
+
+        <!-- Educational Tip -->
+        <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 leading-relaxed">
+          <strong>Heads up:</strong> A valid GS1 checksum confirms standard formatting, not factory origin—counterfeiters can clone real barcodes onto fake boxes. Always combine with photo &amp; physical checks.
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 3: DEAL, SELLER & SERIAL RISK CHECK                           -->
+      <!-- ================================================================= -->
+      <section id="view-deal" class="app-view hidden p-4 space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-[#0F172A]">Deal &amp; Serial Check</h2>
+            <p class="text-xs text-slate-500">Catch fake discounts &amp; verify brand serial rules.</p>
+          </div>
+          <button id="fillFakeDealBtn" type="button" class="px-2.5 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold">
+            Test 75% Off
+          </button>
+        </div>
+
+        <form id="dealForm" class="bg-white rounded-3xl border border-slate-200 p-4 space-y-3 shadow-xs" novalidate>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label for="dealBrand" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Brand *</label>
+              <input id="dealBrand" type="text" placeholder="Apple, Nike, MAC" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+            </div>
+            <div>
+              <label for="dealCat" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Category</label>
+              <select id="dealCat" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <option value="Electronics">Electronics</option>
+                <option value="Sneakers">Sneakers</option>
+                <option value="Cosmetics">Cosmetics</option>
+                <option value="Luxury">Luxury &amp; Watches</option>
+                <option value="Supplements">Supplements</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label for="dealMrp" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Official MRP *</label>
+              <input id="dealMrp" type="number" min="1" step="any" placeholder="24900" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+            </div>
+            <div>
+              <label for="dealPaid" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Offer Price *</label>
+              <input id="dealPaid" type="number" min="0" step="any" placeholder="5999" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" required />
+            </div>
+          </div>
+
+          <!-- Instant Real-Time Discount Anomaly Alert -->
+          <div id="liveDiscountBanner" class="hidden p-3 rounded-2xl border text-xs transition-all">
+            <div class="flex items-center justify-between gap-2">
+              <span id="liveDiscountLabel" class="font-extrabold"></span>
+              <span id="liveDiscountPct" class="font-extrabold"></span>
+            </div>
+            <p id="liveDiscountHint" class="mt-1 text-[11px] leading-snug"></p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label for="dealSeller" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Seller / Platform</label>
+              <input id="dealSeller" type="text" placeholder="Instagram DM / Store" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+            <div>
+              <label for="dealSerial" class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Serial / Batch</label>
+              <input id="dealSerial" type="text" placeholder="Optional code" class="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 font-mono text-xs sm:text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+
+          <p id="dealErr" class="hidden text-xs font-medium text-[#EF4444]"></p>
+
+          <button id="runDealBtn" type="submit" class="w-full py-3.5 px-4 rounded-xl bg-[#0F172A] hover:bg-slate-800 text-white text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60">
+            <svg id="dealSpinner" class="hidden w-4 h-4 animate-spin text-[#10B981]" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path></svg>
+            <span id="runDealBtnText">Analyze Deal Risk</span>
+          </button>
+        </form>
+
+        <!-- Deal Report Card -->
+        <div id="dealResultCard" class="hidden bg-white rounded-3xl border border-slate-200 p-4 space-y-3.5 shadow-sm">
+          <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div>
+              <span id="dealRiskPill" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border"></span>
+              <h3 id="dealResultTitle" class="mt-1.5 text-sm font-extrabold text-[#0F172A]"></h3>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-[10px] font-bold uppercase text-slate-400">Trust</p>
+              <p id="dealScoreVal" class="text-xl font-extrabold text-[#0F172A]"></p>
+            </div>
+          </div>
+
+          <p id="dealSummaryVal" class="text-xs text-slate-600 leading-relaxed"></p>
+
+          <div class="p-3 rounded-2xl bg-slate-50 border border-slate-200">
+            <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Serial &amp; Seller Check</h4>
+            <p id="dealSerialVal" class="text-xs text-slate-700 leading-relaxed"></p>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-rose-50/70 border border-rose-200/80">
+            <h4 class="text-[10px] font-bold uppercase tracking-wider text-rose-800 mb-1.5">Watch Out For</h4>
+            <ul id="dealTraitsList" class="space-y-1 text-xs text-slate-700 list-disc list-inside"></ul>
+          </div>
+
+          <div class="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/80">
+            <h4 class="text-[10px] font-bold uppercase tracking-wider text-emerald-800 mb-1.5">Official Verification Steps</h4>
+            <ol id="dealStepsList" class="space-y-1 text-xs text-slate-800 list-decimal list-inside"></ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 4: PHYSICAL INSPECTION CHECKLIST                              -->
+      <!-- ================================================================= -->
+      <section id="view-checklist" class="app-view hidden p-4 space-y-4">
+        <div>
+          <h2 class="text-lg font-extrabold text-[#0F172A]">Physical Checklist</h2>
+          <p class="text-xs text-slate-500">Tap Pass or Fail as you inspect the item in hand.</p>
+        </div>
+
+        <!-- Horizontal Scrollable Category Pills -->
+        <div id="chkCatPills" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+        <!-- Sticky Live Physical Authenticity Meter -->
+        <div class="sticky top-2 z-20 bg-[#0F172A] text-white rounded-2xl p-3.5 shadow-lg border border-slate-700">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Physical Authenticity Meter</p>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span id="chkMeterScore" class="text-xl font-extrabold">--%</span>
+                <span id="chkMeterBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">Start Checking</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button id="saveChkBtn" type="button" disabled class="px-3 py-2 rounded-xl bg-[#10B981] text-[#0F172A] text-xs font-extrabold disabled:opacity-40 transition-opacity">Save</button>
+              <button id="resetChkBtn" type="button" class="px-2.5 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-700">Reset</button>
+            </div>
+          </div>
+          <div class="mt-2.5 w-full h-2 rounded-full bg-slate-800 overflow-hidden">
+            <div id="chkMeterBar" class="h-full rounded-full bg-slate-500 transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- 6 Tactile Checkpoints -->
+        <div id="chkList" class="space-y-2.5"></div>
+      </section>
+
+      <!-- ================================================================= -->
+      <!-- TAB 5: SCAN HISTORY (SEARCHABLE + FILTERABLE + DETAIL MODAL)      -->
+      <!-- ================================================================= -->
+      <section id="view-history" class="app-view hidden p-4 space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-[#0F172A]">Scan History</h2>
+            <p class="text-xs text-slate-500">Saved locally on your device.</p>
+          </div>
+          <div id="histClearDefault">
+            <button id="histAskClearBtn" type="button" class="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 text-xs font-bold disabled:opacity-40">
+              Clear All
+            </button>
+          </div>
+          <div id="histClearConfirm" class="hidden flex items-center gap-1.5">
+            <button id="histCancelClearBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-[11px] font-bold">Cancel</button>
+            <button id="histDoClearBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-[#EF4444] text-white text-[11px] font-bold">Confirm</button>
+          </div>
+        </div>
+
+        <!-- Search & Filter Bar -->
+        <div class="space-y-2.5">
+          <input id="histSearch" type="search" placeholder="Search brands, barcodes, or verdicts..." class="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <div id="histFilterPills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button type="button" data-filter="all" class="hist-filter px-3 py-1 rounded-full text-[11px] font-bold bg-[#0F172A] text-white">All</button>
+            <button type="button" data-filter="Scan" class="hist-filter px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-slate-200 text-slate-600">Photo</button>
+            <button type="button" data-filter="Barcode" class="hist-filter px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-slate-200 text-slate-600">Barcode</button>
+            <button type="button" data-filter="Deal" class="hist-filter px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-slate-200 text-slate-600">Deal</button>
+            <button type="button" data-filter="Checklist" class="hist-filter px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-slate-200 text-slate-600">Checklist</button>
+          </div>
+        </div>
+
+        <!-- History Cards List -->
+        <div id="histContainer" class="space-y-2.5"></div>
+      </section>
+
+    </main>
+
+    <!-- =================================================================== -->
+    <!-- FIXED 5-TAB NATIVE BOTTOM NAVIGATION BAR                            -->
+    <!-- =================================================================== -->
+    <nav aria-label="Bottom Navigation" class="shrink-0 absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-lg border-t border-slate-200 px-2 pt-1.5 pb-2.5 grid grid-cols-5 gap-1 z-30">
+      <button type="button" data-nav="scan" class="bottom-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-[#0F172A] transition-colors">
+        <svg class="w-5 h-5 text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>
+        <span class="text-[10px] font-extrabold mt-0.5">Scan</span>
+      </button>
+
+      <button type="button" data-nav="barcode" class="bottom-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5v14"></path><path d="M8 5v14"></path><path d="M12 5v14"></path><path d="M17 5v14"></path><path d="M21 5v14"></path></svg>
+        <span class="text-[10px] font-semibold mt-0.5">Barcode</span>
+      </button>
+
+      <button type="button" data-nav="deal" class="bottom-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <span class="text-[10px] font-semibold mt-0.5">Deal</span>
+      </button>
+
+      <button type="button" data-nav="checklist" class="bottom-nav-btn flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        <span class="text-[10px] font-semibold mt-0.5">Check</span>
+      </button>
+
+      <button type="button" data-nav="history" class="bottom-nav-btn relative flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
+        <div class="relative">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 7 12 12 15.5 14"></polyline></svg>
+          <span id="navHistoryCount" class="hidden absolute -top-1.5 -right-2.5 min-w-[1rem] h-4 px-1 rounded-full bg-[#10B981] text-[#0F172A] text-[9px] font-extrabold flex items-center justify-center">0</span>
+        </div>
+        <span class="text-[10px] font-semibold mt-0.5">History</span>
+      </button>
+    </nav>
+
+    <!-- =================================================================== -->
+    <!-- BOTTOM-SHEET MODAL: INSTALL APP, API SETTINGS & DISCLAIMER          -->
+    <!-- =================================================================== -->
+    <div id="infoSheetOverlay" class="hidden absolute inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end">
+      <div class="w-full max-h-[85%] overflow-y-auto bg-white rounded-t-3xl p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-[#0F172A]">Download &amp; Install VeriTrue</h3>
+            <p class="text-[11px] text-slate-500">Install on Android / iOS or configure optional API key</p>
+          </div>
+          <button id="closeInfoBtn" type="button" aria-label="Close" class="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-[#0F172A]">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="space-y-3 text-xs text-slate-600 leading-relaxed">
+          <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+            <p class="font-bold text-emerald-900">1. Install on Phone Home Screen (Free PWA)</p>
+            <p class="mt-1 text-emerald-800">Host this file as <code class="font-mono font-bold">index.html</code> on Netlify Drop or GitHub Pages for a free <code class="font-mono">https://</code> link, then open in Chrome → <strong>⋮ → Install app</strong> (or Safari → <strong>Share → Add to Home Screen</strong>).</p>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+            <p class="font-bold text-[#0F172A]">2. Package as Android .APK</p>
+            <p class="mt-1">Paste your hosted <code class="font-mono">https://</code> link into <strong>pwabuilder.com</strong> to generate an installable Android <code class="font-mono">.apk</code> package.</p>
+          </div>
+
+          <!-- Optional Custom API Key for Standalone Offline Use -->
+          <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <p class="font-bold text-[#0F172A]">Optional: Personal Gemini API Key</p>
+            <p class="text-[11px] text-slate-500">Works automatically inside this preview. If running standalone on your own phone, paste a key from Google AI Studio to unlock live AI photo &amp; deal scans (stored only on this device).</p>
+            <div class="flex gap-2">
+              <input id="customApiKeyInput" type="password" placeholder="Paste Gemini API key (optional)" class="flex-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-mono" />
+              <button id="saveApiKeyBtn" type="button" class="px-3 py-2 rounded-xl bg-[#0F172A] text-white text-xs font-bold">Save</button>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-400 pt-1">
+            <strong>Disclaimer:</strong> VeriTrue provides advisory indicators using GS1 math, tactile checklists, pricing heuristics, and AI visual inspection. Always confirm high-value or safety-critical goods with the official brand or authorized dealer.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- BOTTOM-SHEET MODAL: HISTORY REPORT DETAIL                           -->
+    <!-- =================================================================== -->
+    <div id="detailSheetOverlay" class="hidden absolute inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-end">
+      <div class="w-full max-h-[82%] overflow-y-auto bg-white rounded-t-3xl p-5 shadow-2xl space-y-3">
+        <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <span id="detailTypePill" class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold"></span>
+            <h3 id="detailTitle" class="mt-1 text-base font-extrabold text-[#0F172A]"></h3>
+          </div>
+          <button id="closeDetailBtn" type="button" aria-label="Close" class="p-2 rounded-xl bg-slate-100 text-slate-600">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+        <div class="flex items-center justify-between">
+          <span id="detailVerdict" class="px-3 py-1 rounded-full text-xs font-bold border"></span>
+          <span id="detailScore" class="text-sm font-extrabold text-[#0F172A]"></span>
+        </div>
+        <p id="detailSummary" class="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-slate-50 p-3.5 rounded-2xl border border-slate-200"></p>
+        <p id="detailTime" class="text-[11px] text-slate-400 text-right"></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC, PWA MANIFEST & AI INTEGRATION                      -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      const runtimeApiKey = ""; // Auto-injected in preview environment
+      const GEMINI_MODEL = "gemini-3-flash-preview";
+      const STORAGE_HISTORY_KEY = "veritrue_mobile_history_v1";
+      const STORAGE_APIKEY_KEY = "veritrue_user_gemini_key";
+
+      let activeCameraStream = null;
+      let activeBarcodeStream = null;
+      let barcodeScanTimer = null;
+      let deferredInstallPrompt = null;
+
+      /* ------------------------------------------------------------------- */
+      /* 1. DYNAMIC PWA MANIFEST & INSTALL PROMPT                            */
+      /* ------------------------------------------------------------------- */
+      function initPwaManifest() {
+        try {
+          const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" fill="#0F172A"/><path d="M256 76L106 138v114c0 98 64 186 150 214 86-28 150-116 150-214V138L256 76z" fill="#10B981" fill-opacity="0.22" stroke="#10B981" stroke-width="24" stroke-linejoin="round"/><path d="M186 260l48 48 96-96" fill="none" stroke="#FFFFFF" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+          const iconDataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(iconSvg)}`;
+
+          const manifest = {
+            name: 'VeriTrue — Original Product Scanner',
+            short_name: 'VeriTrue',
+            description: 'Verify original products using AI packaging inspection, GS1 barcodes, deal checks, and physical checklists.',
+            start_url: '.',
+            display: 'standalone',
+            background_color: '#0F172A',
+            theme_color: '#0F172A',
+            icons: [
+              { src: iconDataUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+              { src: iconDataUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+            ]
+          };
+
+          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+          const link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = URL.createObjectURL(blob);
+          document.head.appendChild(link);
+
+          const appleIcon = document.createElement('link');
+          appleIcon.rel = 'apple-touch-icon';
+          appleIcon.href = iconDataUrl;
+          document.head.appendChild(appleIcon);
+
+          const installBtn = document.getElementById('installPromptBtn');
+          window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            if (installBtn) installBtn.classList.remove('hidden');
+          });
+
+          if (installBtn) {
+            installBtn.addEventListener('click', async () => {
+              if (!deferredInstallPrompt) return;
+              deferredInstallPrompt.prompt();
+              await deferredInstallPrompt.userChoice;
+              deferredInstallPrompt = null;
+              installBtn.classList.add('hidden');
+            });
+          }
+        } catch (err) {
+          console.error('PWA setup error:', err);
+        }
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 2. SHARED HELPERS (TOASTS, COLORS, GEMINI API)                      */
+      /* ------------------------------------------------------------------- */
+      function showToast(msg, type = 'info') {
+        const stack = document.getElementById('toastStack');
+        if (!stack) return;
+        const styles = {
+          success: 'bg-emerald-950/95 border-emerald-500/40 text-emerald-100',
+          warning: 'bg-amber-950/95 border-amber-500/40 text-amber-100',
+          error: 'bg-rose-950/95 border-rose-500/40 text-rose-100',
+          info: 'bg-slate-900/95 border-slate-700 text-white',
+        };
+        const el = document.createElement('div');
+        el.className = `pointer-events-auto px-3.5 py-2.5 rounded-2xl border shadow-xl text-xs font-semibold backdrop-blur-md transition-all duration-300 opacity-0 -translate-y-2 ${styles[type] || styles.info}`;
+        el.textContent = msg;
+        stack.appendChild(el);
+        requestAnimationFrame(() => el.classList.remove('opacity-0', '-translate-y-2'));
+        setTimeout(() => {
+          el.classList.add('opacity-0', '-translate-y-2');
+          setTimeout(() => el.remove(), 300);
+        }, 3000);
+      }
+
+      function getPalette(label) {
+        const s = (label || '').toLowerCase();
+        if (s.includes('authentic') || s.includes('valid') || s.includes('low')) {
+          return { stroke: '#10B981', pill: 'bg-emerald-50 text-emerald-800 border-emerald-200', banner: 'bg-emerald-50 border-emerald-200 text-emerald-900', iconBg: 'bg-emerald-100 text-[#10B981]', bar: 'bg-[#10B981]' };
+        }
+        if (s.includes('high') || s.includes('invalid') || s.includes('fail') || s.includes('counterfeit')) {
+          return { stroke: '#EF4444', pill: 'bg-rose-50 text-rose-800 border-rose-200', banner: 'bg-rose-50 border-rose-200 text-rose-900', iconBg: 'bg-rose-100 text-[#EF4444]', bar: 'bg-[#EF4444]' };
+        }
+        return { stroke: '#F59E0B', pill: 'bg-amber-50 text-amber-800 border-amber-200', banner: 'bg-amber-50 border-amber-200 text-amber-900', iconBg: 'bg-amber-100 text-[#F59E0B]', bar: 'bg-[#F59E0B]' };
+      }
+
+      function getEffectiveApiKey() {
+        try {
+          const saved = localStorage.getItem(STORAGE_APIKEY_KEY) || '';
+          return saved.trim() || runtimeApiKey;
+        } catch (_) {
+          return runtimeApiKey;
+        }
+      }
+
+      async function callGemini(payload, maxRetries = 3) {
+        const key = getEffectiveApiKey();
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(key)}`;
+        let lastErr = null;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          try {
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (!text) throw new Error('Empty AI response.');
+              return text;
+            }
+            if ((res.status === 429 || res.status >= 500) && attempt < maxRetries) {
+              await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 1000));
+              continue;
+            }
+            let detail = `Status ${res.status}`;
+            try {
+              const j = await res.json();
+              if (j?.error?.message) detail = j.error.message;
+            } catch (_) {}
+            throw new Error(detail);
+          } catch (err) {
+            lastErr = err;
+            if (attempt < maxRetries) {
+              await new Promise((r) => setTimeout(r, Math.pow(2, attempt) * 1000));
+              continue;
+            }
+          }
+        }
+        throw lastErr || new Error('AI request failed.');
+      }
+
+      function stopAllCameras() {
+        if (activeCameraStream) {
+          activeCameraStream.getTracks().forEach((t) => t.stop());
+          activeCameraStream = null;
+        }
+        if (activeBarcodeStream) {
+          activeBarcodeStream.getTracks().forEach((t) => t.stop());
+          activeBarcodeStream = null;
+        }
+        if (barcodeScanTimer) {
+          clearInterval(barcodeScanTimer);
+          barcodeScanTimer = null;
+        }
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 3. NAVIGATION & INFO / SETTINGS BOTTOM SHEET                        */
+      /* ------------------------------------------------------------------- */
+      function initNavigation() {
+        const navBtns = document.querySelectorAll('.bottom-nav-btn');
+        const views = {
+          scan: document.getElementById('view-scan'),
+          barcode: document.getElementById('view-barcode'),
+          deal: document.getElementById('view-deal'),
+          checklist: document.getElementById('view-checklist'),
+          history: document.getElementById('view-history'),
+        };
+        const subtitles = {
+          scan: 'AI Packaging Scanner',
+          barcode: 'GS1 Barcode Validator',
+          deal: 'Deal & Serial Analyzer',
+          checklist: 'Physical Inspection',
+          history: 'Saved Scan History',
+        };
+        const subtitleEl = document.getElementById('topBarSubtitle');
+        const viewport = document.getElementById('appViewport');
+
+        function switchTab(target) {
+          stopAllCameras();
+          document.getElementById('scanCameraBox')?.classList.add('hidden');
+          if (!document.getElementById('scanPreviewImg')?.getAttribute('src')) {
+            document.getElementById('scanIdleBox')?.classList.remove('hidden');
+          }
+          document.getElementById('liveBarcodeActive')?.classList.add('hidden');
+          document.getElementById('liveBarcodeIdle')?.classList.remove('hidden');
+
+          Object.entries(views).forEach(([key, el]) => {
+            if (el) el.classList.toggle('hidden', key !== target);
+          });
+
+          navBtns.forEach((btn) => {
+            const active = btn.getAttribute('data-nav') === target;
+            const svg = btn.querySelector('svg');
+            const label = btn.querySelector('span:last-child');
+            btn.className = active
+              ? 'bottom-nav-btn relative flex flex-col items-center justify-center py-1 rounded-xl text-[#0F172A] transition-colors'
+              : 'bottom-nav-btn relative flex flex-col items-center justify-center py-1 rounded-xl text-slate-400 hover:text-slate-700 transition-colors';
+            if (svg) svg.setAttribute('class', active ? 'w-5 h-5 text-[#10B981]' : 'w-5 h-5');
+            if (label) label.className = active ? 'text-[10px] font-extrabold mt-0.5' : 'text-[10px] font-semibold mt-0.5';
+          });
+
+          if (subtitleEl) subtitleEl.textContent = subtitles[target] || 'AI Authenticity Scanner';
+          if (viewport) viewport.scrollTop = 0;
+          if (target === 'history') historyStore.render();
+        }
+
+        navBtns.forEach((btn) => {
+          btn.addEventListener('click', () => switchTab(btn.getAttribute('data-nav')));
+        });
+
+        // Info / Install / API Key Bottom Sheet
+        const infoOverlay = document.getElementById('infoSheetOverlay');
+        const openInfoBtn = document.getElementById('openInfoBtn');
+        const closeInfoBtn = document.getElementById('closeInfoBtn');
+        const keyInput = document.getElementById('customApiKeyInput');
+        const saveKeyBtn = document.getElementById('saveApiKeyBtn');
+
+        openInfoBtn.addEventListener('click', () => {
+          try {
+            keyInput.value = localStorage.getItem(STORAGE_APIKEY_KEY) || '';
+          } catch (_) {}
+          infoOverlay.classList.remove('hidden');
+        });
+        closeInfoBtn.addEventListener('click', () => infoOverlay.classList.add('hidden'));
+        infoOverlay.addEventListener('click', (e) => {
+          if (e.target === infoOverlay) infoOverlay.classList.add('hidden');
+        });
+        saveKeyBtn.addEventListener('click', () => {
+          try {
+            const val = keyInput.value.trim();
+            if (val) localStorage.setItem(STORAGE_APIKEY_KEY, val);
+            else localStorage.removeItem(STORAGE_APIKEY_KEY);
+            showToast(val ? 'Personal Gemini API key saved locally!' : 'Custom API key cleared.', 'success');
+            infoOverlay.classList.add('hidden');
+          } catch (_) {
+            showToast('Unable to access local storage.', 'error');
+          }
+        });
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 4. LOCAL HISTORY STORE + REPORT DETAIL MODAL                        */
+      /* ------------------------------------------------------------------- */
+      const historyStore = (function () {
+        const container = document.getElementById('histContainer');
+        const searchInput = document.getElementById('histSearch');
+        const filterBtns = document.querySelectorAll('.hist-filter');
+        const navBadge = document.getElementById('navHistoryCount');
+        const clearDefault = document.getElementById('histClearDefault');
+        const clearConfirm = document.getElementById('histClearConfirm');
+        const askClearBtn = document.getElementById('histAskClearBtn');
+        const cancelClearBtn = document.getElementById('histCancelClearBtn');
+        const doClearBtn = document.getElementById('histDoClearBtn');
+
+        const detailOverlay = document.getElementById('detailSheetOverlay');
+        const closeDetailBtn = document.getElementById('closeDetailBtn');
+        const detailTypePill = document.getElementById('detailTypePill');
+        const detailTitle = document.getElementById('detailTitle');
+        const detailVerdict = document.getElementById('detailVerdict');
+        const detailScore = document.getElementById('detailScore');
+        const detailSummary = document.getElementById('detailSummary');
+        const detailTime = document.getElementById('detailTime');
+
+        let activeFilter = 'all';
+
+        function read() {
+          try {
+            const parsed = JSON.parse(localStorage.getItem(STORAGE_HISTORY_KEY) || '[]');
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (_) {
+            return [];
+          }
+        }
+
+        function write(arr) {
+          try {
+            localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(arr.slice(0, 40)));
+          } catch (_) {}
+        }
+
+        function updateBadge(count) {
+          navBadge.textContent = String(count);
+          navBadge.classList.toggle('hidden', count === 0);
+          askClearBtn.disabled = count === 0;
+        }
+
+        function openDetail(item) {
+          const pal = getPalette(item.verdict);
+          detailTypePill.textContent = item.category;
+          detailTitle.textContent = item.title;
+          detailVerdict.className = `px-3 py-1 rounded-full text-xs font-bold border ${pal.pill}`;
+          detailVerdict.textContent = item.verdict;
+          detailScore.textContent = item.scoreLabel || '';
+          detailSummary.textContent = item.summary || 'No additional details.';
+          detailTime.textContent = new Date(item.timestamp).toLocaleString();
+          detailOverlay.classList.remove('hidden');
+        }
+
+        closeDetailBtn.addEventListener('click', () => detailOverlay.classList.add('hidden'));
+        detailOverlay.addEventListener('click', (e) => {
+          if (e.target === detailOverlay) detailOverlay.classList.add('hidden');
+        });
+
+        function render() {
+          const all = read();
+          updateBadge(all.length);
+
+          const q = (searchInput.value || '').trim().toLowerCase();
+          const filtered = all.filter((item) => {
+            const matchCat = activeFilter === 'all' || item.category === activeFilter;
+            const matchText = !q ||
+              (item.title || '').toLowerCase().includes(q) ||
+              (item.verdict || '').toLowerCase().includes(q) ||
+              (item.summary || '').toLowerCase().includes(q);
+            return matchCat && matchText;
+          });
+
+          container.innerHTML = '';
+          if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'bg-white rounded-3xl border border-slate-200 p-8 text-center';
+            empty.innerHTML = `
+              <p class="text-sm font-bold text-[#0F172A]">No checks found</p>
+              <p class="mt-1 text-xs text-slate-500">Run a Scan, Barcode, Deal, or Checklist verification to save results here.</p>
+            `;
+            container.appendChild(empty);
+            return;
+          }
+
+          filtered.forEach((item) => {
+            const pal = getPalette(item.verdict);
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-2xl border border-slate-200 p-3.5 shadow-xs active:scale-[0.99] transition-transform cursor-pointer';
+
+            const top = document.createElement('div');
+            top.className = 'flex items-center justify-between gap-2';
+
+            const catBadge = document.createElement('span');
+            catBadge.className = 'px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold';
+            catBadge.textContent = item.category;
+
+            const right = document.createElement('div');
+            right.className = 'flex items-center gap-2';
+
+            const timeTxt = document.createElement('span');
+            timeTxt.className = 'text-[10px] text-slate-400';
+            timeTxt.textContent = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const del = document.createElement('button');
+            del.type = 'button';
+            del.className = 'p-1 rounded-lg text-slate-400 hover:text-rose-600';
+            del.innerHTML = '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            del.addEventListener('click', (e) => {
+              e.stopPropagation();
+              write(read().filter((x) => x.id !== item.id));
+              render();
+            });
+
+            right.append(timeTxt, del);
+            top.append(catBadge, right);
+
+            const title = document.createElement('h4');
+            title.className = 'mt-1.5 text-sm font-bold text-[#0F172A] truncate';
+            title.textContent = item.title;
+
+            const bottom = document.createElement('div');
+            bottom.className = 'mt-2 flex items-center justify-between gap-2';
+
+            const verdict = document.createElement('span');
+            verdict.className = `px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${pal.pill}`;
+            verdict.textContent = item.verdict;
+
+            const score = document.createElement('span');
+            score.className = 'text-xs font-extrabold text-[#0F172A]';
+            score.textContent = item.scoreLabel || '';
+
+            bottom.append(verdict, score);
+            card.append(top, title, bottom);
+            card.addEventListener('click', () => openDetail(item));
+            container.appendChild(card);
+          });
+        }
+
+        function add({ category, title, verdict, scoreLabel, summary }) {
+          const items = read();
+          items.unshift({
+            id: `vt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            category,
+            title,
+            verdict,
+            scoreLabel,
+            summary,
+            timestamp: new Date().toISOString(),
+          });
+          write(items);
+          render();
+        }
+
+        searchInput.addEventListener('input', render);
+        filterBtns.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            activeFilter = btn.getAttribute('data-filter') || 'all';
+            filterBtns.forEach((b) => {
+              const on = b === btn;
+              b.className = on
+                ? 'hist-filter px-3 py-1 rounded-full text-[11px] font-bold bg-[#0F172A] text-white'
+                : 'hist-filter px-3 py-1 rounded-full text-[11px] font-semibold bg-white border border-slate-200 text-slate-600';
+            });
+            render();
+          });
+        });
+
+        askClearBtn.addEventListener('click', () => {
+          clearDefault.classList.add('hidden');
+          clearConfirm.classList.remove('hidden');
+        });
+        cancelClearBtn.addEventListener('click', () => {
+          clearConfirm.classList.add('hidden');
+          clearDefault.classList.remove('hidden');
+        });
+        doClearBtn.addEventListener('click', () => {
+          write([]);
+          render();
+          clearConfirm.classList.add('hidden');
+          clearDefault.classList.remove('hidden');
+          showToast('Scan history cleared.', 'info');
+        });
+
+        render();
+        return { add, render };
+      })();
+
+      /* ------------------------------------------------------------------- */
+      /* 5. TAB 1: SCAN (CAMERA + PHOTO UPLOAD + AI ANALYSIS)                */
+      /* ------------------------------------------------------------------- */
+      function initScanTab() {
+        const idleBox = document.getElementById('scanIdleBox');
+        const cameraBox = document.getElementById('scanCameraBox');
+        const previewBox = document.getElementById('scanPreviewBox');
+        const video = document.getElementById('cameraVideo');
+        const previewImg = document.getElementById('scanPreviewImg');
+        const fileLabel = document.getElementById('scanFileLabel');
+
+        const startCamBtn = document.getElementById('startCameraBtn');
+        const stopCamBtn = document.getElementById('stopCameraBtn');
+        const snapBtn = document.getElementById('snapPhotoBtn');
+        const uploadBtn = document.getElementById('uploadGalleryBtn');
+        const fileInput = document.getElementById('scanFileInput');
+        const clearBtn = document.getElementById('clearScanPhotoBtn');
+        const demoBtn = document.getElementById('demoScanBtn');
+
+        const form = document.getElementById('scanForm');
+        const brandIn = document.getElementById('scanBrand');
+        const priceIn = document.getElementById('scanPrice');
+        const runBtn = document.getElementById('runScanBtn');
+        const runBtnText = document.getElementById('runScanBtnText');
+        const spinner = document.getElementById('scanSpinner');
+        const btnIcon = document.getElementById('scanBtnIcon');
+
+        const resultCard = document.getElementById('scanResultCard');
+        const gaugeArc = document.getElementById('scanGaugeArc');
+        const scoreNum = document.getElementById('scanScoreNum');
+        const verdictPill = document.getElementById('scanVerdictPill');
+        const summaryTxt = document.getElementById('scanSummaryTxt');
+        const authList = document.getElementById('scanAuthenticList');
+        const redList = document.getElementById('scanRedFlagList');
+        const nextList = document.getElementById('scanNextStepList');
+
+        let imgBase64 = null;
+        let imgMime = 'image/jpeg';
+
+        function setPreview(dataUrl, mime, label) {
+          imgBase64 = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
+          imgMime = mime || 'image/jpeg';
+          previewImg.src = dataUrl;
+          fileLabel.textContent = label;
+          idleBox.classList.add('hidden');
+          cameraBox.classList.add('hidden');
+          previewBox.classList.remove('hidden');
+        }
+
+        function resetCapture() {
+          stopAllCameras();
+          imgBase64 = null;
+          fileInput.value = '';
+          previewImg.removeAttribute('src');
+          previewBox.classList.add('hidden');
+          cameraBox.classList.add('hidden');
+          idleBox.classList.remove('hidden');
+        }
+
+        // Start rear camera
+        startCamBtn.addEventListener('click', async () => {
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast('Live camera requires HTTPS. Opening photo upload instead.', 'warning');
+            fileInput.click();
+            return;
+          }
+          try {
+            stopAllCameras();
+            activeCameraStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: 'environment' } },
+              audio: false,
+            });
+            video.srcObject = activeCameraStream;
+            idleBox.classList.add('hidden');
+            previewBox.classList.add('hidden');
+            cameraBox.classList.remove('hidden');
+          } catch (_) {
+            showToast('Camera permission denied or unavailable. Use Upload Photo.', 'warning');
+          }
+        });
+
+        stopCamBtn.addEventListener('click', resetCapture);
+        clearBtn.addEventListener('click', resetCapture);
+
+        snapBtn.addEventListener('click', () => {
+          if (!video.videoWidth) return;
+          const c = document.createElement('canvas');
+          c.width = video.videoWidth;
+          c.height = video.videoHeight;
+          c.getContext('2d').drawImage(video, 0, 0);
+          const dataUrl = c.toDataURL('image/jpeg', 0.88);
+          stopAllCameras();
+          setPreview(dataUrl, 'image/jpeg', 'Captured via camera');
+          showToast('Photo captured! Tap Analyze Authenticity.', 'info');
+        });
+
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (!f.type.startsWith('image/')) {
+            showToast('Please select a valid image.', 'error');
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            setPreview(ev.target.result, f.type, f.name);
+            showToast('Photo loaded!', 'info');
+          };
+          reader.readAsDataURL(f);
+        });
+
+        function renderReport(data, labelSuffix = '') {
+          const score = Math.max(0, Math.min(100, Math.round(Number(data.authenticity_score) || 0)));
+          const verdict = data.verdict || 'Needs Closer Inspection';
+          const pal = getPalette(verdict);
+
+          resultCard.classList.remove('hidden');
+          const circ = 263.89;
+          gaugeArc.setAttribute('stroke', pal.stroke);
+          gaugeArc.style.strokeDashoffset = String(circ);
+          requestAnimationFrame(() => {
+            gaugeArc.style.strokeDashoffset = String(circ - (score / 100) * circ);
+          });
+
+          scoreNum.textContent = String(score);
+          verdictPill.className = `inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${pal.pill}`;
+          verdictPill.textContent = verdict;
+          summaryTxt.textContent = data.summary || '';
+
+          const fill = (ul, list) => {
+            ul.innerHTML = '';
+            (Array.isArray(list) && list.length ? list : ['None observed from this angle.']).forEach((txt) => {
+              const li = document.createElement('li');
+              li.textContent = txt;
+              ul.appendChild(li);
+            });
+          };
+          fill(authList, data.authentic_signs);
+          fill(redList, data.red_flags);
+          fill(nextList, data.next_steps);
+
+          historyStore.add({
+            category: 'Scan',
+            title: (brandIn.value.trim() || 'Product Photo') + labelSuffix,
+            verdict,
+            scoreLabel: `${score}/100`,
+            summary: data.summary || '',
+          });
+
+          resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // One-tap offline demo scan
+        demoBtn.addEventListener('click', () => {
+          const c = document.createElement('canvas');
+          c.width = 560;
+          c.height = 340;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#E2E8F0';
+          ctx.fillRect(0, 0, 560, 340);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(40, 35, 480, 270);
+          ctx.strokeStyle = '#94A3B8';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(40, 35, 480, 270);
+          ctx.fillStyle = '#0F172A';
+          ctx.font = 'bold 26px Inter, sans-serif';
+          ctx.fillText('AERO PRO  AUDIO  2nd Gen', 68, 92);
+          ctx.fillStyle = '#475569';
+          ctx.font = '15px monospace';
+          ctx.fillText('Designd in California • Assembled in PRC', 68, 130);
+          ctx.fillText('Serial: GX6H29K1Q6L   EAN: 8901030865129', 68, 162);
+          ctx.fillStyle = '#0F172A';
+          for (let i = 0; i < 48; i++) ctx.fillRect(68 + i * 8.5, 195, i % 3 === 0 ? 4 : 2, 70);
+
+          setPreview(c.toDataURL('image/png'), 'image/png', 'demo-label-sample.png');
+          brandIn.value = 'Aero Pro Audio';
+          priceIn.value = '₹4,200 Social Store';
+
+          renderReport({
+            verdict: 'High Counterfeit Risk',
+            authenticity_score: 26,
+            summary: 'Spelling error ("Designd"), irregular typography spacing, and an extreme discount from an unverified store strongly suggest a counterfeit unit.',
+            authentic_signs: ['Standard serial & barcode placement on the outer box panel.'],
+            red_flags: [
+              'Typo on label: "Designd in California" instead of "Designed".',
+              'Uneven double-spacing in the main product title font.',
+              'Barcode 8901030865129 has an invalid GS1 check digit (try checking it in the Barcode tab!).',
+            ],
+            next_steps: [
+              'Test barcode 8901030865129 inside the Barcode tab.',
+              'Verify serial GX6H29K1Q6L on the official brand warranty site.',
+              'Test companion app pairing and firmware readout before paying.',
+            ],
+          }, ' (Demo)');
+          showToast('Demo scan complete!', 'warning');
+        });
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!imgBase64) {
+            showToast('Take or upload a photo first, or tap Try Demo Scan.', 'warning');
+            return;
+          }
+
+          runBtn.disabled = true;
+          spinner.classList.remove('hidden');
+          btnIcon.classList.add('hidden');
+          runBtnText.textContent = 'Analyzing...';
+
+          const payload = {
+            contents: [{
+              role: 'user',
+              parts: [
+                {
+                  text: `You are VeriTrue's anti-counterfeit visual analyst. Inspect this product/packaging image honestly. Brand: ${brandIn.value.trim() || 'Unknown'}. Price/Store: ${priceIn.value.trim() || 'Unknown'}. Check typography, spelling, logo alignment, material finish, and seals. Return strictly JSON.`,
+                },
+                { inlineData: { mimeType: imgMime, data: imgBase64 } },
+              ],
+            }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  verdict: { type: 'STRING', enum: ['Likely Authentic', 'Needs Closer Inspection', 'High Counterfeit Risk'] },
+                  authenticity_score: { type: 'INTEGER' },
+                  summary: { type: 'STRING' },
+                  authentic_signs: { type: 'ARRAY', items: { type: 'STRING' } },
+                  red_flags: { type: 'ARRAY', items: { type: 'STRING' } },
+                  next_steps: { type: 'ARRAY', items: { type: 'STRING' } },
+                },
+                required: ['verdict', 'authenticity_score', 'summary', 'authentic_signs', 'red_flags', 'next_steps'],
+              },
+            },
+          };
+
+          try {
+            const raw = await callGemini(payload);
+            renderReport(JSON.parse(raw));
+            showToast('AI authenticity report ready!', 'success');
+          } catch (err) {
+            showToast('AI scan unavailable. Add a Gemini API key in Install → Settings, or use Try Demo Scan.', 'error');
+          } finally {
+            runBtn.disabled = false;
+            spinner.classList.add('hidden');
+            btnIcon.classList.remove('hidden');
+            runBtnText.textContent = 'Analyze Authenticity';
+          }
+        });
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 6. TAB 2: BARCODE VALIDATOR + LIVE BARCODE DETECTOR                 */
+      /* ------------------------------------------------------------------- */
+      function initBarcodeTab() {
+        const form = document.getElementById('barcodeForm');
+        const input = document.getElementById('barcodeInput');
+        const errEl = document.getElementById('barcodeErr');
+        const chips = document.querySelectorAll('.bc-chip');
+
+        const startBtn = document.getElementById('startBarcodeCamBtn');
+        const stopBtn = document.getElementById('stopBarcodeCamBtn');
+        const idleBar = document.getElementById('liveBarcodeIdle');
+        const activeBar = document.getElementById('liveBarcodeActive');
+        const bcVideo = document.getElementById('barcodeVideo');
+
+        const resCard = document.getElementById('barcodeResultCard');
+        const banner = document.getElementById('bcBanner');
+        const bannerIcon = document.getElementById('bcBannerIcon');
+        const statusTitle = document.getElementById('bcStatusTitle');
+        const statusSub = document.getElementById('bcStatusSub');
+        const visualStrip = document.getElementById('bcVisualStrip');
+        const formatted = document.getElementById('bcCodeFormatted');
+        const formatTxt = document.getElementById('bcFormatTxt');
+        const regionTxt = document.getElementById('bcRegionTxt');
+        const mathTxt = document.getElementById('bcMathTxt');
+
+        function gs1Region(prefix) {
+          if (prefix >= 0 && prefix <= 19) return 'USA & Canada (GS1 US)';
+          if (prefix >= 60 && prefix <= 139) return 'USA & Canada (GS1 US)';
+          if (prefix >= 300 && prefix <= 379) return 'France';
+          if (prefix >= 400 && prefix <= 440) return 'Germany';
+          if ((prefix >= 450 && prefix <= 459) || (prefix >= 490 && prefix <= 499)) return 'Japan';
+          if (prefix >= 460 && prefix <= 469) return 'Russia';
+          if (prefix === 471) return 'Taiwan';
+          if (prefix === 489) return 'Hong Kong';
+          if (prefix >= 500 && prefix <= 509) return 'United Kingdom';
+          if (prefix >= 690 && prefix <= 699) return 'China';
+          if (prefix >= 760 && prefix <= 769) return 'Switzerland';
+          if (prefix >= 800 && prefix <= 839) return 'Italy';
+          if (prefix >= 840 && prefix <= 849) return 'Spain';
+          if (prefix >= 870 && prefix <= 879) return 'Netherlands';
+          if (prefix === 880) return 'South Korea';
+          if (prefix === 885) return 'Thailand';
+          if (prefix === 888) return 'Singapore';
+          if (prefix === 890) return 'India (GS1 India)';
+          if (prefix === 893) return 'Vietnam';
+          if (prefix === 899) return 'Indonesia';
+          if (prefix >= 930 && prefix <= 939) return 'Australia';
+          if (prefix === 978 || prefix === 979) return 'ISBN Books';
+          return 'International / Other GS1 Prefix';
+        }
+
+        function validate(raw) {
+          const digits = (raw || '').replace(/[\s-]/g, '');
+          if (!/^(\d{8}|\d{12}|\d{13})$/.test(digits)) {
+            errEl.textContent = 'Enter 8 (EAN-8), 12 (UPC-A), or 13 (EAN-13) digits.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          errEl.classList.add('hidden');
+
+          const len = digits.length;
+          const fmt = len === 8 ? 'EAN-8' : len === 12 ? 'UPC-A' : 'EAN-13';
+
+          // Universal GS1 Modulo-10: from right-to-left excluding check digit, alternate weights 3, 1, 3, 1...
+          const body = digits.slice(0, -1);
+          const actual = parseInt(digits.slice(-1), 10);
+          let sum = 0;
+          for (let i = 0; i < body.length; i++) {
+            const d = parseInt(body[body.length - 1 - i], 10);
+            sum += d * (i % 2 === 0 ? 3 : 1);
+          }
+          const expected = (10 - (sum % 10)) % 10;
+          const ok = expected === actual;
+
+          const gtin13 = len === 12 ? `0${digits}` : digits;
+          const prefix = parseInt(gtin13.slice(0, 3), 10);
+          const region = len === 8 ? 'Compact Retail EAN-8' : gs1Region(prefix);
+
+          resCard.classList.remove('hidden');
+          const pal = getPalette(ok ? 'Valid' : 'Invalid');
+          banner.className = `p-3.5 rounded-2xl border flex items-start gap-3 ${pal.banner}`;
+          bannerIcon.className = `w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${pal.iconBg}`;
+          bannerIcon.innerHTML = ok
+            ? '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+          statusTitle.textContent = ok ? 'Valid GS1 Barcode Checksum' : 'Invalid Checksum — Counterfeit Alert';
+          statusSub.textContent = ok
+            ? `Check digit (${actual}) matches official GS1 math.`
+            : `Printed check digit is ${actual}, but math requires ${expected}.`;
+
+          // Render proportional bars
+          visualStrip.innerHTML = '';
+          [2, 1, 2, ...digits.split('').flatMap((ch, idx) => [(Number(ch) % 3) + 1, ((Number(ch) + idx) % 2) + 1]), 2, 1, 2].forEach((w) => {
+            const b = document.createElement('div');
+            b.className = 'bg-[#0F172A] h-full rounded-[1px]';
+            b.style.width = `${w * 2}px`;
+            visualStrip.appendChild(b);
+          });
+
+          formatted.textContent = digits;
+          formatTxt.textContent = fmt;
+          regionTxt.textContent = region;
+          mathTxt.textContent = `Weighted Sum: ${sum}\nExpected Check Digit: ${expected} | Printed: ${actual} → ${ok ? 'VALID' : 'INVALID'}`;
+
+          historyStore.add({
+            category: 'Barcode',
+            title: `${fmt}: ${digits}`,
+            verdict: ok ? 'Valid GS1' : 'Invalid Checksum',
+            scoreLabel: ok ? region.split(' ')[0] : 'Failed',
+            summary: `${region}. Expected check digit ${expected}, found ${actual}.`,
+          });
+
+          showToast(ok ? `Valid ${fmt} (${region})` : 'Invalid barcode checksum!', ok ? 'success' : 'error');
+        }
+
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          validate(input.value);
+        });
+
+        chips.forEach((c) => {
+          c.addEventListener('click', () => {
+            input.value = c.getAttribute('data-code') || '';
+            validate(input.value);
+          });
+        });
+
+        // Live camera BarcodeDetector API with graceful fallback
+        startBtn.addEventListener('click', async () => {
+          if (!('BarcodeDetector' in window)) {
+            showToast('Live barcode detection is not supported in this browser. Type digits below.', 'warning');
+            return;
+          }
+          try {
+            stopAllCameras();
+            activeBarcodeStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: 'environment' } },
+              audio: false,
+            });
+            bcVideo.srcObject = activeBarcodeStream;
+            idleBar.classList.add('hidden');
+            activeBar.classList.remove('hidden');
+
+            const detector = new window.BarcodeDetector({ formats: ['ean_13', 'ean_8', 'upc_a'] });
+            barcodeScanTimer = setInterval(async () => {
+              if (!bcVideo.videoWidth) return;
+              try {
+                const codes = await detector.detect(bcVideo);
+                if (codes && codes.length > 0 && codes[0].rawValue) {
+                  const val = codes[0].rawValue;
+                  stopAllCameras();
+                  activeBar.classList.add('hidden');
+                  idleBar.classList.remove('hidden');
+                  input.value = val;
+                  validate(val);
+                }
+              } catch (_) {}
+            }, 350);
+          } catch (_) {
+            showToast('Could not access camera. Enter barcode manually below.', 'warning');
+          }
+        });
+
+        stopBtn.addEventListener('click', () => {
+          stopAllCameras();
+          activeBar.classList.add('hidden');
+          idleBar.classList.remove('hidden');
+        });
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 7. TAB 3: DEAL, SELLER & SERIAL RISK ANALYZER                       */
+      /* ------------------------------------------------------------------- */
+      function initDealTab() {
+        const form = document.getElementById('dealForm');
+        const brandIn = document.getElementById('dealBrand');
+        const catIn = document.getElementById('dealCat');
+        const mrpIn = document.getElementById('dealMrp');
+        const paidIn = document.getElementById('dealPaid');
+        const sellerIn = document.getElementById('dealSeller');
+        const serialIn = document.getElementById('dealSerial');
+        const errEl = document.getElementById('dealErr');
+
+        const banner = document.getElementById('liveDiscountBanner');
+        const discLabel = document.getElementById('liveDiscountLabel');
+        const discPct = document.getElementById('liveDiscountPct');
+        const discHint = document.getElementById('liveDiscountHint');
+
+        const runBtn = document.getElementById('runDealBtn');
+        const runText = document.getElementById('runDealBtnText');
+        const spinner = document.getElementById('dealSpinner');
+        const fillFakeBtn = document.getElementById('fillFakeDealBtn');
+
+        const resCard = document.getElementById('dealResultCard');
+        const riskPill = document.getElementById('dealRiskPill');
+        const resTitle = document.getElementById('dealResultTitle');
+        const scoreVal = document.getElementById('dealScoreVal');
+        const summaryVal = document.getElementById('dealSummaryVal');
+        const serialVal = document.getElementById('dealSerialVal');
+        const traitsList = document.getElementById('dealTraitsList');
+        const stepsList = document.getElementById('dealStepsList');
+
+        function updateDiscountMeter() {
+          const mrp = parseFloat(mrpIn.value);
+          const paid = parseFloat(paidIn.value);
+          if (!mrp || mrp <= 0 || isNaN(paid) || paid < 0) {
+            banner.classList.add('hidden');
+            return null;
+          }
+          const pct = Math.round(((mrp - paid) / mrp) * 100);
+          banner.classList.remove('hidden');
+
+          if (pct > 55) {
+            banner.className = 'p-3 rounded-2xl border bg-rose-50 border-rose-200 text-rose-900 text-xs';
+            discLabel.textContent = 'Extreme Counterfeit Discount Alert';
+            discPct.textContent = `${pct}% OFF`;
+            discHint.textContent = 'Discounts above 55% on branded items strongly signal replicas or unauthorized stock.';
+          } else if (pct >= 35) {
+            banner.className = 'p-3 rounded-2xl border bg-amber-50 border-amber-200 text-amber-900 text-xs';
+            discLabel.textContent = 'Elevated Caution';
+            discPct.textContent = `${pct}% OFF`;
+            discHint.textContent = 'Verify seller authorization and warranty invoice carefully.';
+          } else {
+            banner.className = 'p-3 rounded-2xl border bg-emerald-50 border-emerald-200 text-emerald-900 text-xs';
+            discLabel.textContent = 'Normal Market Range';
+            discPct.textContent = pct >= 0 ? `${pct}% OFF` : `+${Math.abs(pct)}% Over MRP`;
+            discHint.textContent = 'Pricing looks realistic, though physical & serial verification is still recommended.';
+          }
+          return pct;
+        }
+
+        mrpIn.addEventListener('input', updateDiscountMeter);
+        paidIn.addEventListener('input', updateDiscountMeter);
+
+        fillFakeBtn.addEventListener('click', () => {
+          brandIn.value = 'Apple AirPods Pro 2';
+          catIn.value = 'Electronics';
+          mrpIn.value = '24900';
+          paidIn.value = '5999';
+          sellerIn.value = 'FlashDeals Instagram DM';
+          serialIn.value = 'GX6H29K1Q6L';
+          updateDiscountMeter();
+        });
+
+        function renderDealReport(data, brand, pct) {
+          const score = Math.max(0, Math.min(100, Math.round(Number(data.trust_score) || 0)));
+          const risk = data.risk_level || 'Moderate Caution';
+          const pal = getPalette(risk);
+
+          resCard.classList.remove('hidden');
+          riskPill.className = `inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${pal.pill}`;
+          riskPill.textContent = risk;
+          resTitle.textContent = `${brand} (${pct}% Off)`;
+          scoreVal.textContent = `${score}/100`;
+          summaryVal.textContent = data.summary || '';
+          serialVal.textContent = data.serial_format_analysis || '';
+
+          traitsList.innerHTML = '';
+          (data.known_counterfeit_traits || []).forEach((t) => {
+            const li = document.createElement('li');
+            li.textContent = t;
+            traitsList.appendChild(li);
+          });
+
+          stepsList.innerHTML = '';
+          (data.official_verification_steps || []).forEach((s) => {
+            const li = document.createElement('li');
+            li.textContent = s;
+            stepsList.appendChild(li);
+          });
+
+          historyStore.add({
+            category: 'Deal',
+            title: `${brand} (${pct}% off)`,
+            verdict: risk,
+            scoreLabel: `${score}/100`,
+            summary: data.summary || '',
+          });
+          resCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        /**
+         * Smart local risk analyzer fallback when running offline without an API key.
+         */
+        function buildLocalFallbackReport(brand, cat, pct, seller, serial) {
+          const sellerLower = (seller || '').toLowerCase();
+          const riskySeller = /(insta|dm|whatsapp|telegram|unverified|cash|flash)/i.test(sellerLower);
+          let score = 84;
+          if (pct > 60) score -= 50;
+          else if (pct >= 35) score -= 24;
+          if (riskySeller) score -= 22;
+          if (!serial) score -= 5;
+          score = Math.max(10, Math.min(95, score));
+
+          const risk = score <= 42 ? 'High Counterfeit Risk' : score <= 72 ? 'Moderate Caution' : 'Low Risk';
+          return {
+            risk_level: risk,
+            trust_score: score,
+            summary: `Calculated ${pct}% discount on ${brand} (${cat})${riskySeller ? ' via an informal social seller' : ''}. ${score <= 42 ? 'This combination is a major counterfeit red flag.' : 'Confirm official invoice and serial matching before trusting.'}`,
+            serial_format_analysis: serial
+              ? `Code "${serial}" (${serial.length} chars) should match identically across the sealed box, physical product, and warranty receipt. Note that counterfeiters often reprint valid cloned serials.`
+              : `No serial/batch code provided. Request a clear close-up photo of the box label and serial number before paying.`,
+            known_counterfeit_traits: [
+              'Deeply discounted "factory surplus" or "customs seized" stories.',
+              'Blurry micro-typography, spelling typos, or loose shrink-wrap seals.',
+              'Refusal to provide an official GST/tax invoice or authorized dealer proof.',
+            ],
+            official_verification_steps: [
+              `Look up "${brand} authorized dealers" on the brand's official website.`,
+              'Verify the serial/batch code directly on the manufacturer warranty portal.',
+              'Complete the 6-point Physical Checklist tab once you hold the item.',
+            ],
+          };
+        }
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const brand = brandIn.value.trim();
+          const mrp = parseFloat(mrpIn.value);
+          const paid = parseFloat(paidIn.value);
+          if (!brand || !mrp || mrp <= 0 || isNaN(paid) || paid < 0) {
+            errEl.textContent = 'Enter Brand, Official MRP, and Offer Price.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          errEl.classList.add('hidden');
+
+          const pct = updateDiscountMeter();
+          const cat = catIn.value;
+          const seller = sellerIn.value.trim() || 'Not specified';
+          const serial = serialIn.value.trim();
+
+          runBtn.disabled = true;
+          spinner.classList.remove('hidden');
+          runText.textContent = 'Analyzing...';
+
+          const payload = {
+            contents: [{
+              role: 'user',
+              parts: [{
+                text: `Analyze counterfeit risk for: Brand="${brand}", Category="${cat}", MRP=${mrp}, Offered=${paid} (${pct}% off), Seller="${seller}", Serial="${serial || 'None'}". Return JSON.`,
+              }],
+            }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: 'OBJECT',
+                properties: {
+                  risk_level: { type: 'STRING', enum: ['Low Risk', 'Moderate Caution', 'High Counterfeit Risk'] },
+                  trust_score: { type: 'INTEGER' },
+                  summary: { type: 'STRING' },
+                  serial_format_analysis: { type: 'STRING' },
+                  known_counterfeit_traits: { type: 'ARRAY', items: { type: 'STRING' } },
+                  official_verification_steps: { type: 'ARRAY', items: { type: 'STRING' } },
+                },
+                required: ['risk_level', 'trust_score', 'summary', 'serial_format_analysis', 'known_counterfeit_traits', 'official_verification_steps'],
+              },
+            },
+          };
+
+          try {
+            const raw = await callGemini(payload, 1);
+            renderDealReport(JSON.parse(raw), brand, pct);
+            showToast('AI deal risk report complete!', 'success');
+          } catch (_) {
+            // Seamlessly fall back to local heuristic risk engine so the app always works offline
+            const fallback = buildLocalFallbackReport(brand, cat, pct, seller, serial);
+            renderDealReport(fallback, brand, pct);
+            showToast('Analyzed using built-in risk rules!', 'info');
+          } finally {
+            runBtn.disabled = false;
+            spinner.classList.add('hidden');
+            runText.textContent = 'Analyze Deal Risk';
+          }
+        });
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* 8. TAB 4: PHYSICAL INSPECTION CHECKLIST                             */
+      /* ------------------------------------------------------------------- */
+      function initChecklistTab() {
+        const data = {
+          sneakers: {
+            name: 'Sneakers',
+            items: [
+              { t: 'Stitching & Glue Cleanliness', d: 'Tight, even stitching along seams with no messy excess glue.' },
+              { t: 'Tongue Size Tag & SKU Match', d: 'Style SKU matches box sticker and official colorway code.' },
+              { t: 'Midsole Cushion & Odor', d: 'Responsive foam feel without sharp chemical glue smell.' },
+              { t: 'Logo Symmetry & Crispness', d: 'Clean edges and mirrored placement on both left and right shoes.' },
+              { t: 'Box Cardboard & Insole Print', d: 'Rigid box, crisp barcode label, and cleanly adhered insole.' },
+              { t: 'Lace Holes & Heel Structure', d: 'Firm heel counter that holds shape when gently squeezed.' },
+            ],
+          },
+          electronics: {
+            name: 'Electronics',
+            items: [
+              { t: 'Official Companion App Pairing', d: 'Recognized natively by the brand app with firmware info.' },
+              { t: 'Weight & Hinge Precision', d: 'Solid weight with smooth hinges and flush plastic seams.' },
+              { t: 'Micro-Etched Regulatory Text', d: 'Sharp laser-etched markings instead of blurry gray print.' },
+              { t: '3-Way Serial Number Match', d: 'Box, physical unit, and phone settings show identical serial.' },
+              { t: 'Port Alignment & Cable Finish', d: 'Centered USB-C/Lightning port and seamless cable molding.' },
+              { t: 'Core Hardware Feature Test', d: 'ANC, spatial audio, or fast charging performs as advertised.' },
+            ],
+          },
+          cosmetics: {
+            name: 'Cosmetics',
+            items: [
+              { t: 'Batch Code Match', d: 'Stamped code on outer box matches bottle/tube bottom code.' },
+              { t: 'Taut Cellophane Seal', d: 'Tight heat-folded wrap without loose wrinkles or glue smudges.' },
+              { t: 'Glass & Atomizer Quality', d: 'Clear heavy glass, straight dip tube, fine even mist spray.' },
+              { t: 'Ingredient Spelling & PAO', d: 'Zero typos on INCI list and crisp 12M/24M icon.' },
+              { t: 'Scent Evolution / Texture', d: 'Balanced scent longevity without harsh pure-alcohol burn.' },
+              { t: 'Cap Click & Inner Cradle', d: 'Secure cap fitment and snug inner box protective insert.' },
+            ],
+          },
+          luxury: {
+            name: 'Luxury',
+            items: [
+              { t: 'Heavy Engraved Hardware', d: 'Solid clasps/zippers with razor-sharp engraving and no flaking.' },
+              { t: 'Uniform Saddle Stitching', d: 'Consistent stitch count per inch and smooth edge paint.' },
+              { t: 'Date Code / NFC / Rehaut', d: 'Authentic serial tab, NFC tag, or dial engravings align.' },
+              { t: 'Leather Grain & Scent', d: 'Supple full-grain leather smell instead of synthetic plastic.' },
+              { t: 'Lining & Interior Stamp', d: 'Clean heat-stamped brand mark without ink bleeding.' },
+              { t: 'Dust Bag & Receipt Papers', d: 'Heavy fabric dust bag with crisp centered typography.' },
+            ],
+          },
+          supplements: {
+            name: 'Supplements',
+            items: [
+              { t: 'Outer & Inner Foil Seals', d: 'Both neck shrink-wrap and inner induction foil fully intact.' },
+              { t: 'Official Scratch/QR Code', d: 'Verifies on the brand’s exact official domain (not a clone URL).' },
+              { t: 'Etched Lot & Expiry Date', d: 'Dot-matrix or laser-printed on tub, not a peelable sticker.' },
+              { t: 'Importer / FSSAI Details', d: 'Clear licensed importer name and verifiable regulatory ID.' },
+              { t: 'Powder Texture & Scoop', d: 'Fine uniform powder, branded scoop inside, mixes cleanly.' },
+              { t: 'Nutrition Label Audit', d: 'Matches official website macros with zero spelling errors.' },
+            ],
+          },
+        };
+
+        const state = {};
+        Object.keys(data).forEach((k) => { state[k] = new Array(data[k].items.length).fill(null); });
+        let currentCat = 'sneakers';
+
+        const pillsEl = document.getElementById('chkCatPills');
+        const listEl = document.getElementById('chkList');
+        const scoreEl = document.getElementById('chkMeterScore');
+        const badgeEl = document.getElementById('chkMeterBadge');
+        const barEl = document.getElementById('chkMeterBar');
+        const saveBtn = document.getElementById('saveChkBtn');
+        const resetBtn = document.getElementById('resetChkBtn');
+
+        function renderPills() {
+          pillsEl.innerHTML = '';
+          Object.entries(data).forEach(([k, v]) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = k === currentCat
+              ? 'shrink-0 px-3.5 py-2 rounded-xl bg-[#0F172A] text-white text-xs font-bold shadow-xs'
+              : 'shrink-0 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold';
+            btn.textContent = v.name;
+            btn.addEventListener('click', () => {
+              currentCat = k;
+              renderPills();
+              renderItems();
+              updateMeter();
+            });
+            pillsEl.appendChild(btn);
+          });
+        }
+
+        function renderItems() {
+          listEl.innerHTML = '';
+          const cat = data[currentCat];
+          const statuses = state[currentCat];
+
+          cat.items.forEach((item, i) => {
+            const st = statuses[i];
+            const card = document.createElement('div');
+            card.className = `p-3.5 rounded-2xl border transition-all ${
+              st === 'pass' ? 'bg-emerald-50/50 border-emerald-300' :
+              st === 'fail' ? 'bg-rose-50/50 border-rose-300' :
+              'bg-white border-slate-200'
+            }`;
+
+            const top = document.createElement('div');
+            top.className = 'flex items-start justify-between gap-3';
+
+            const info = document.createElement('div');
+            const h = document.createElement('h4');
+            h.className = 'text-xs sm:text-sm font-bold text-[#0F172A]';
+            h.textContent = `${i + 1}. ${item.t}`;
+            const p = document.createElement('p');
+            p.className = 'mt-0.5 text-[11px] text-slate-600 leading-snug';
+            p.textContent = item.d;
+            info.append(h, p);
+
+            const btns = document.createElement('div');
+            btns.className = 'flex items-center gap-1.5 shrink-0';
+
+            const passBtn = document.createElement('button');
+            passBtn.type = 'button';
+            passBtn.className = st === 'pass'
+              ? 'px-2.5 py-1.5 rounded-lg bg-[#10B981] text-white text-[11px] font-bold'
+              : 'px-2.5 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-700 text-[11px] font-bold';
+            passBtn.textContent = '✓ Pass';
+            passBtn.addEventListener('click', () => {
+              state[currentCat][i] = st === 'pass' ? null : 'pass';
+              renderItems();
+              updateMeter();
+            });
+
+            const failBtn = document.createElement('button');
+            failBtn.type = 'button';
+            failBtn.className = st === 'fail'
+              ? 'px-2.5 py-1.5 rounded-lg bg-[#EF4444] text-white text-[11px] font-bold'
+              : 'px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 text-[11px] font-bold';
+            failBtn.textContent = '✕ Fail';
+            failBtn.addEventListener('click', () => {
+              state[currentCat][i] = st === 'fail' ? null : 'fail';
+              renderItems();
+              updateMeter();
+            });
+
+            btns.append(passBtn, failBtn);
+            top.append(info, btns);
+            card.appendChild(top);
+            listEl.appendChild(card);
+          });
+        }
+
+        function updateMeter() {
+          const st = state[currentCat];
+          const pass = st.filter((x) => x === 'pass').length;
+          const fail = st.filter((x) => x === 'fail').length;
+          const done = pass + fail;
+          saveBtn.disabled = done === 0;
+
+          if (done === 0) {
+            scoreEl.textContent = '--%';
+            badgeEl.textContent = 'Start Checking';
+            badgeEl.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700';
+            barEl.className = 'h-full rounded-full bg-slate-500 transition-all duration-300';
+            barEl.style.width = '0%';
+            return;
+          }
+
+          const pct = Math.round((pass / done) * 100);
+          let verdict = 'Needs Inspection';
+          let barColor = 'bg-[#F59E0B]';
+          let badgeCls = 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+          if (pct >= 83 && fail === 0) {
+            verdict = 'Likely Authentic';
+            barColor = 'bg-[#10B981]';
+            badgeCls = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40';
+          } else if (pct < 60 || fail >= 2) {
+            verdict = 'High Counterfeit Risk';
+            barColor = 'bg-[#EF4444]';
+            badgeCls = 'bg-rose-500/20 text-rose-300 border-rose-500/40';
+          }
+
+          scoreEl.textContent = `${pct}%`;
+          badgeEl.textContent = `${verdict} (${done}/6)`;
+          badgeEl.className = `px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeCls}`;
+          barEl.className = `h-full rounded-full transition-all duration-300 ${barColor}`;
+          barEl.style.width = `${pct}%`;
+        }
+
+        saveBtn.addEventListener('click', () => {
+          const st = state[currentCat];
+          const pass = st.filter((x) => x === 'pass').length;
+          const fail = st.filter((x) => x === 'fail').length;
+          const done = pass + fail;
+          if (!done) return;
+          const pct = Math.round((pass / done) * 100);
+          const verdict = pct >= 83 && fail === 0 ? 'Likely Authentic' : (pct < 60 || fail >= 2) ? 'High Counterfeit Risk' : 'Needs Closer Inspection';
+
+          historyStore.add({
+            category: 'Checklist',
+            title: `${data[currentCat].name} Checklist`,
+            verdict,
+            scoreLabel: `${pct}% (${pass}/${done})`,
+            summary: `Physical inspection of ${data[currentCat].name}: ${pass} passed, ${fail} failed out of ${done} checked.`,
+          });
+          showToast('Checklist saved to History!', 'success');
+        });
+
+        resetBtn.addEventListener('click', () => {
+          state[currentCat] = new Array(data[currentCat].items.length).fill(null);
+          renderItems();
+          updateMeter();
+          showToast('Checklist reset.', 'info');
+        });
+
+        renderPills();
+        renderItems();
+        updateMeter();
+      }
+
+      /* ------------------------------------------------------------------- */
+      /* BOOTSTRAP APP                                                       */
+      /* ------------------------------------------------------------------- */
+      document.addEventListener('DOMContentLoaded', () => {
+        initPwaManifest();
+        initNavigation();
+        initScanTab();
+        initBarcodeTab();
+        initDealTab();
+        initChecklistTab();
+      });
+    })();
+  </script>
+</body>
+</html>
+```
